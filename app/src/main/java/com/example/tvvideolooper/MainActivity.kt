@@ -5,10 +5,8 @@ import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.pm.PackageManager
 import android.os.Bundle
-import android.os.Environment
 import android.util.Log
 import android.view.WindowManager
-import android.widget.Toast
 import androidx.core.app.ActivityCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -19,11 +17,13 @@ import androidx.media3.common.util.Util
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import androidx.media3.ui.PlayerView
-import com.example.tvvideolooper.FileSelector.OnSelectListener
+import com.github.angads25.filepicker.model.DialogConfigs
+import com.github.angads25.filepicker.model.DialogProperties
+import com.github.angads25.filepicker.view.FilePickerDialog
 import java.io.File
 
 
-class MainActivity : Activity() {
+class MainActivity : Activity(){
 
     private val playbackStateListener: Player.Listener = playbackStateListener()
     private var player: ExoPlayer? = null
@@ -31,31 +31,29 @@ class MainActivity : Activity() {
     private var playWhenReady = true
     private var currentItem = 0
     private var playbackPosition = 0L
-    private var dpath : String? =""
-    lateinit var videoView : PlayerView
+    private var dpath: String? = ""
+    lateinit var videoView: PlayerView
     val READ_STORAGE_PERMISSION_REQUEST_CODE = 41;
+
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        FileSelector(this, arrayOf(".mp4", ".mpeg4")).selectFile(object : OnSelectListener {
-            override fun onSelect(path: String?) {
-                dpath = path
-                Toast.makeText(this@MainActivity, "$path", Toast.LENGTH_SHORT).show()
-            }
-        })
+
+        showFilePicker()
         videoView = findViewById(R.id.video_view)
+
 
     }
 
     public override fun onStart() {
         super.onStart()
         if (Util.SDK_INT > 23) {
-            if(!checkPermission()) {
+            if (!checkPermission()) {
                 requestPermissionForReadExtertalStorage()
-            }
-            else {
+            } else {
                 initializePlayer()
             }
         }
@@ -65,10 +63,9 @@ class MainActivity : Activity() {
         super.onResume()
         hideSystemUi()
         if (Util.SDK_INT <= 23 || player == null) {
-            if(!checkPermission()) {
+            if (!checkPermission()) {
                 requestPermissionForReadExtertalStorage()
-            }
-            else {
+            } else {
                 initializePlayer()
             }
         }
@@ -86,6 +83,24 @@ class MainActivity : Activity() {
         if (Util.SDK_INT > 23) {
             releasePlayer()
         }
+    }
+
+    fun showFilePicker() {
+        val properties = DialogProperties()
+        properties.selection_mode = DialogConfigs.SINGLE_MODE
+        properties.selection_type = DialogConfigs.FILE_SELECT
+        properties.root = File(DialogConfigs.DEFAULT_DIR)
+        properties.error_dir = File(DialogConfigs.DEFAULT_DIR)
+        properties.offset = File(DialogConfigs.DEFAULT_DIR)
+        properties.extensions = null
+
+        val dialog = FilePickerDialog(this@MainActivity, properties)
+        dialog.setTitle("Select a File")
+        dialog.setDialogSelectionListener {
+            //files is the array of the paths of files selected by the Application User.
+        }
+        dialog.show()
+
     }
 
     private fun initializePlayer() {
@@ -117,8 +132,10 @@ class MainActivity : Activity() {
 
     private fun requestPermissionForReadExtertalStorage() {
         try {
-            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE),
-                READ_STORAGE_PERMISSION_REQUEST_CODE)
+            ActivityCompat.requestPermissions(
+                this, arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE),
+                READ_STORAGE_PERMISSION_REQUEST_CODE
+            )
         } catch (e: Exception) {
             e.printStackTrace()
             throw e;
@@ -137,10 +154,9 @@ class MainActivity : Activity() {
             if (files != null)
                 for (i in files) {
 //                    if (i.endsWith("mp4"))
-                        exoPlayer.addMediaItem(MediaItem.fromUri("$path/$i"))
+                    exoPlayer.addMediaItem(MediaItem.fromUri("$path/$i"))
                 }
         }
-
 
 
         //adding videos to exoplayer playlist from assets:-
@@ -169,20 +185,21 @@ class MainActivity : Activity() {
         WindowCompat.setDecorFitsSystemWindows(window, false)
         WindowInsetsControllerCompat(window, videoView).let { controller ->
             controller.hide(WindowInsetsCompat.Type.systemBars())
-            controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            controller.systemBarsBehavior =
+                WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
         }
     }
-}
 
-private fun playbackStateListener() = object : Player.Listener {
-    override fun onPlaybackStateChanged(playbackState: Int) {
-        val stateString: String = when (playbackState) {
-            ExoPlayer.STATE_IDLE -> "ExoPlayer.STATE_IDLE      -"
-            ExoPlayer.STATE_BUFFERING -> "ExoPlayer.STATE_BUFFERING -"
-            ExoPlayer.STATE_READY -> "ExoPlayer.STATE_READY     -"
-            ExoPlayer.STATE_ENDED -> "ExoPlayer.STATE_ENDED     -"
-            else -> "UNKNOWN_STATE             -"
+    private fun playbackStateListener() = object : Player.Listener {
+        override fun onPlaybackStateChanged(playbackState: Int) {
+            val stateString: String = when (playbackState) {
+                ExoPlayer.STATE_IDLE -> "ExoPlayer.STATE_IDLE      -"
+                ExoPlayer.STATE_BUFFERING -> "ExoPlayer.STATE_BUFFERING -"
+                ExoPlayer.STATE_READY -> "ExoPlayer.STATE_READY     -"
+                ExoPlayer.STATE_ENDED -> "ExoPlayer.STATE_ENDED     -"
+                else -> "UNKNOWN_STATE             -"
+            }
+            Log.d("Tv Video player", "changed state to $stateString")
         }
-        Log.d("Tv Video player", "changed state to $stateString")
     }
 }
