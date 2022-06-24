@@ -32,7 +32,7 @@ class MainActivity : Activity(){
     private var playWhenReady = true
     private var currentItem = 0
     private var playbackPosition = 0L
-    private lateinit var dpath: Array<String>
+    private  var dpath: Array<String>? = null
     lateinit var videoView: PlayerView
     val READ_STORAGE_PERMISSION_REQUEST_CODE = 41;
 
@@ -42,6 +42,7 @@ class MainActivity : Activity(){
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        showFilePicker()
         videoView = findViewById(R.id.video_view)
 
 
@@ -53,7 +54,6 @@ class MainActivity : Activity(){
             if (!checkPermission()) {
                 requestPermissionForReadExtertalStorage()
             } else {
-                showFilePicker()
                 initializePlayer()
             }
         }
@@ -87,7 +87,7 @@ class MainActivity : Activity(){
 
     fun showFilePicker() {
         val properties = DialogProperties()
-        properties.selection_mode = DialogConfigs.SINGLE_MODE
+        properties.selection_mode = DialogConfigs.MULTI_MODE
         properties.selection_type = DialogConfigs.FILE_SELECT
 //        properties.root = File(DialogConfigs.DEFAULT_DIR)
         properties.root = File("/storage/emulated/0/")
@@ -99,7 +99,7 @@ class MainActivity : Activity(){
         dialog.setTitle("Select a File")
         dialog.setDialogSelectionListener { it1 ->
 
-            dpath=it1.clone()
+            dpath = it1.clone()
             //files is the array of the paths of files selected by the Application User.
         }
         dialog.show()
@@ -150,14 +150,14 @@ class MainActivity : Activity(){
         //adding videos from Downloads/demo-videos:-
 
 //        val path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).absolutePath + "/demo-videos"
-        dpath.forEach {
+        dpath?.forEach {
             val path = it
             val directory = File(path)
             if (directory.exists()) {
                 val files = directory.list()
                 if (files != null)
                     for (i in files) {
-//                    if (i.endsWith("mp4"))
+    //                    if (i.endsWith("mp4"))
                         exoPlayer.addMediaItem(MediaItem.fromUri("$path/$i"))
                     }
             }
