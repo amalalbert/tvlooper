@@ -42,7 +42,6 @@ class MainActivity : Activity(){
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        showFilePicker()
         videoView = findViewById(R.id.video_view)
 
 
@@ -53,13 +52,15 @@ class MainActivity : Activity(){
         if (Util.SDK_INT > 23) {
             if (!checkPermission()) {
                 requestPermissionForReadExtertalStorage()
+                showFilePicker()
             } else {
-                initializePlayer()
+                showFilePicker()
             }
         }
     }
 
     public override fun onResume() {
+        Log.d("devhell", "onResume: ")
         super.onResume()
         hideSystemUi()
         if (Util.SDK_INT <= 23 || player == null) {
@@ -87,27 +88,36 @@ class MainActivity : Activity(){
 
     fun showFilePicker() {
         val properties = DialogProperties()
+        val systemPath = "/storage/emulated/0/"
         properties.selection_mode = DialogConfigs.MULTI_MODE
         properties.selection_type = DialogConfigs.FILE_SELECT
 //        properties.root = File(DialogConfigs.DEFAULT_DIR)
-        properties.root = File("/storage/emulated/0/")
-        properties.error_dir = File(DialogConfigs.DEFAULT_DIR)
-        properties.offset = File(DialogConfigs.DEFAULT_DIR)
+        properties.root = File(systemPath)
+        properties.error_dir = File(systemPath)
+        properties.offset = File(systemPath)
         properties.extensions = null
 
         val dialog = FilePickerDialog(this@MainActivity, properties)
         dialog.setTitle("Select a File")
-        dialog.setDialogSelectionListener { it1 ->
-
-            dpath = it1.clone()
-            //files is the array of the paths of files selected by the Application User.
-        }
+        dialog.setNegativeBtnName("")
         dialog.show()
+        dialog.setDialogSelectionListener {
+            Log.d("devhell", "showFilePicker: ${it.size}")
+
+            dpath = it.clone()
+            initializePlayer()
+        }
+//        dialog.setDialogSelectionListener { it ->
+//            Log.d("devhell", "showFilePicker: ${it}")
+//            dpath = it.clone()
+//            //files is the array of the paths of files selected by the Application User.
+//        }
+
 
     }
 
     private fun initializePlayer() {
-
+        Log.d("devhell", "initializePlayer: ")
         val trackSelector = DefaultTrackSelector(this).apply {
             setParameters(buildUponParameters().setMaxVideoSizeSd())
         }
@@ -120,6 +130,7 @@ class MainActivity : Activity(){
                 addMediaItems(exoPlayer)
 
                 exoPlayer.playWhenReady = playWhenReady
+
 //                exoPlayer.seekTo(currentItem, playbackPosition)
 //                exoPlayer.addListener(playbackStateListener)
                 exoPlayer.repeatMode = ExoPlayer.REPEAT_MODE_ALL
@@ -146,21 +157,23 @@ class MainActivity : Activity(){
     }
 
     private fun addMediaItems(exoPlayer: ExoPlayer) {
-
+        Log.d("devhell", "addMediaItems: ${dpath?.size}")
         //adding videos from Downloads/demo-videos:-
 
 //        val path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).absolutePath + "/demo-videos"
         dpath?.forEach {
             val path = it
-            val directory = File(path)
-            if (directory.exists()) {
-                val files = directory.list()
-                if (files != null)
-                    for (i in files) {
-    //                    if (i.endsWith("mp4"))
-                        exoPlayer.addMediaItem(MediaItem.fromUri("$path/$i"))
-                    }
-            }
+            exoPlayer.addMediaItem(MediaItem.fromUri("$path"))
+//            val directory = File(path)
+//            if (directory.exists()) {
+//                val files = directory.list()
+//                Log.d("devhell", "addMediaItems: $files ")
+//                if (files != null)
+//                    for (i in files) {
+//    //                    if (i.endsWith("mp4"))
+//                        exoPlayer.addMediaItem(MediaItem.fromUri("$path/$i"))
+//                    }
+//            }
         }
 
         //adding videos to exoplayer playlist from assets:-
