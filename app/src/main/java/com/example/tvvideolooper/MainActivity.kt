@@ -52,11 +52,8 @@ class MainActivity : Activity(){
         if (Util.SDK_INT > 23) {
             if (!checkPermission()) {
                 requestPermissionForReadExtertalStorage()
-                showFilePicker()
-            } else {
-                showFilePicker()
-            }
         }
+            showFilePicker()
     }
 
     public override fun onResume() {
