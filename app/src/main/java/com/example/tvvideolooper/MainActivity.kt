@@ -1,6 +1,7 @@
 package com.example.tvvideolooper
 
 import android.Manifest
+import android.animation.Animator.AnimatorListener
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.app.AlertDialog
@@ -9,6 +10,9 @@ import android.os.Bundle
 import android.util.Log
 import android.view.View
 import android.view.WindowManager
+import android.view.animation.Animation
+import android.view.animation.LinearInterpolator
+import android.view.animation.RotateAnimation
 import android.widget.Button
 import android.widget.ImageView
 import android.widget.TextView
@@ -41,7 +45,7 @@ class MainActivity : Activity() {
     val READ_STORAGE_PERMISSION_REQUEST_CODE = 41
     var properties: DialogProperties? = null
     var dialog: FilePickerDialog? = null
-    val logo: ImageView? = null
+    var logo: ImageView? = null
     var launchBtn: Button? = null
 
 
@@ -51,13 +55,32 @@ class MainActivity : Activity() {
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         videoView = findViewById(R.id.video_view)
         launchBtn = findViewById(R.id.btn_launch)
+        logo = findViewById(R.id.iv_logo)
         videoView?.visibility = View.GONE
         logo?.visibility = View.VISIBLE
+        launchBtn?.visibility = View.GONE
+        prepareAnimate(logo)
         launchBtn?.setOnClickListener {
             alertBuilder()
         }
     }
+    private fun prepareAnimate(logo: ImageView?) {
+        val anim = RotateAnimation(0f, 350f, Animation.RELATIVE_TO_SELF,.5f,Animation.RELATIVE_TO_SELF, .5f)
+        anim.interpolator = LinearInterpolator()
+        anim.repeatCount = 1
+        anim.duration = 600
+// Start animating the image
+        logo?.startAnimation(anim)
+        anim.setAnimationListener(object : Animation.AnimationListener {
+            override fun onAnimationStart(animation: Animation) {}
+            override fun onAnimationEnd(animation: Animation) {
+                launchBtn?.visibility = View.VISIBLE
+                Log.d("devhell", "onAnimationEnd: ")
+            }
 
+            override fun onAnimationRepeat(animation: Animation) {}
+        })
+    }
     private fun alertBuilder() {
         Log.d("devhell", "entered")
         val builder = AlertDialog.Builder(this@MainActivity)
@@ -84,6 +107,13 @@ class MainActivity : Activity() {
         builder.setPositiveButton("Exit") { dialog, which ->
             dialog.dismiss()
             finish()
+        }
+        builder.setNegativeButton("Reselect"){ dialog, which ->
+            videoView?.player?.stop()
+            videoView?.player?.clearMediaItems()
+            dialog.dismiss()
+            videoView?.visibility = View.GONE
+            showFilePicker()
         }
 
         builder.setNeutralButton("cancel") { dialog, which ->
