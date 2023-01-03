@@ -10,6 +10,7 @@ import android.util.Log
 import android.view.View
 import android.view.WindowManager
 import android.widget.Button
+import android.widget.ImageView
 import android.widget.TextView
 import androidx.core.app.ActivityCompat
 import androidx.core.view.WindowCompat
@@ -40,14 +41,21 @@ class MainActivity : Activity() {
     val READ_STORAGE_PERMISSION_REQUEST_CODE = 41
     var properties: DialogProperties? = null
     var dialog: FilePickerDialog? = null
+    val logo: ImageView? = null
+    var launchBtn: Button? = null
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        alertBuilder()
         setContentView(R.layout.activity_main)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         videoView = findViewById(R.id.video_view)
+        launchBtn = findViewById(R.id.btn_launch)
+        videoView?.visibility = View.GONE
+        logo?.visibility = View.VISIBLE
+        launchBtn?.setOnClickListener {
+            alertBuilder()
+        }
     }
 
     private fun alertBuilder() {
@@ -61,8 +69,25 @@ class MainActivity : Activity() {
             showFilePicker()
         }
 
-        builder.setNeutralButton("Exit") { dialog, which ->
+        builder.setNeutralButton("Cancel") { dialog, which ->
+            dialog.dismiss()
+        }
+        builder.show()
+    }
+
+    private fun alertBuilderBack() {
+        Log.d("devhell", "entered")
+        val builder = AlertDialog.Builder(this@MainActivity)
+        builder.setTitle("Loopster")
+        builder.setMessage("Do you really want to exit?")
+
+        builder.setPositiveButton("Exit") { dialog, which ->
+            dialog.dismiss()
             finish()
+        }
+
+        builder.setNeutralButton("cancel") { dialog, which ->
+            dialog.dismiss()
         }
         builder.show()
     }
@@ -104,7 +129,10 @@ class MainActivity : Activity() {
         }
     }
 
-    fun showFilePicker() {
+    override fun onBackPressed() {
+        alertBuilderBack()
+    }
+    private fun showFilePicker() {
         properties = DialogProperties()
         properties?.selection_mode = DialogConfigs.MULTI_MODE
         properties?.selection_type = DialogConfigs.FILE_SELECT
@@ -118,6 +146,8 @@ class MainActivity : Activity() {
         dialog?.setDialogSelectionListener {
             //files is the array of the paths of files selected by the Application User.
             dpath = it.clone()
+            launchBtn?.visibility = View.GONE
+            videoView?.visibility = View.VISIBLE
             initializePlayer()
 //            window.addFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE)
         }
@@ -129,11 +159,11 @@ class MainActivity : Activity() {
         dialog?.findViewById<Button>(com.github.angads25.filepicker.R.id.cancel)?.setOnClickListener {
             Log.d("devhell", "showFilePicker: ")
             dialog!!.dismiss()
-            alertBuilder()
         }
     }
 
     private fun initializePlayer() {
+
         dialog?.dismiss()
         val trackSelector = DefaultTrackSelector(this).apply {
             setParameters(buildUponParameters().setMaxVideoSizeSd())
