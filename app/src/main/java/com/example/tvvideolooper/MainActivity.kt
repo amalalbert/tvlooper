@@ -3,10 +3,14 @@ package com.example.tvvideolooper
 import android.Manifest
 import android.annotation.SuppressLint
 import android.app.Activity
+import android.app.AlertDialog
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.util.Log
+import android.view.View
 import android.view.WindowManager
+import android.widget.Button
+import android.widget.TextView
 import androidx.core.app.ActivityCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -17,14 +21,13 @@ import androidx.media3.common.util.Util
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import androidx.media3.ui.PlayerView
-import com.example.tvvideolooper.models.model
 import com.github.angads25.filepicker.model.DialogConfigs
 import com.github.angads25.filepicker.model.DialogProperties
 import com.github.angads25.filepicker.view.FilePickerDialog
 import java.io.File
 
 
-class MainActivity : Activity(){
+class MainActivity : Activity() {
 
     private val playbackStateListener: Player.Listener = playbackStateListener()
     private var player: ExoPlayer? = null
@@ -32,19 +35,36 @@ class MainActivity : Activity(){
     private var playWhenReady = true
     private var currentItem = 0
     private var playbackPosition = 0L
-    private  var dpath: Array<String>? = null
-    lateinit var videoView: PlayerView
-    val READ_STORAGE_PERMISSION_REQUEST_CODE = 41;
-
+    private var dpath: Array<String>? = null
+    private var videoView: PlayerView? = null
+    val READ_STORAGE_PERMISSION_REQUEST_CODE = 41
+    var properties: DialogProperties? = null
+    var dialog: FilePickerDialog? = null
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        alertBuilder()
         setContentView(R.layout.activity_main)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         videoView = findViewById(R.id.video_view)
+    }
 
+    private fun alertBuilder() {
+        Log.d("devhell", "entered")
+        val builder = AlertDialog.Builder(this@MainActivity)
+        builder.setTitle("Loopster")
+        builder.setMessage("Videos to loop should be placed in Internal Storage/Movies.\nClick Next to Continue")
 
+        builder.setPositiveButton("Next") { dialog, which ->
+            dialog.dismiss()
+            showFilePicker()
+        }
+
+        builder.setNeutralButton("Exit") { dialog, which ->
+            finish()
+        }
+        builder.show()
     }
 
     public override fun onStart() {
@@ -52,12 +72,13 @@ class MainActivity : Activity(){
         if (Util.SDK_INT > 23) {
             if (!checkPermission()) {
                 requestPermissionForReadExtertalStorage()
+            } else {
+                showFilePicker()
+            }
         }
-            showFilePicker()
     }
 
     public override fun onResume() {
-        Log.d("devhell", "onResume: ")
         super.onResume()
         hideSystemUi()
         if (Util.SDK_INT <= 23 || player == null) {
@@ -84,37 +105,36 @@ class MainActivity : Activity(){
     }
 
     fun showFilePicker() {
-        val properties = DialogProperties()
-        val systemPath = "/storage/emulated/0/"
-        properties.selection_mode = DialogConfigs.MULTI_MODE
-        properties.selection_type = DialogConfigs.FILE_SELECT
-//        properties.root = File(DialogConfigs.DEFAULT_DIR)
-        properties.root = File(systemPath)
-        properties.error_dir = File(systemPath)
-        properties.offset = File(systemPath)
-        properties.extensions = null
+        properties = DialogProperties()
+        properties?.selection_mode = DialogConfigs.MULTI_MODE
+        properties?.selection_type = DialogConfigs.FILE_SELECT
+        properties?.root = File("/storage/emulated/0/Movies")
+        properties?.error_dir = File("/storage/emulated/0/Movies")
+        properties?.offset = File(DialogConfigs.DEFAULT_DIR)
+        properties?.extensions = null
 
-        val dialog = FilePickerDialog(this@MainActivity, properties)
-        dialog.setTitle("Select a File")
-        dialog.setNegativeBtnName("")
-        dialog.show()
-        dialog.setDialogSelectionListener {
-            Log.d("devhell", "showFilePicker: ${it.size}")
-
+        dialog = FilePickerDialog(this@MainActivity, properties)
+        dialog?.setTitle("Select Media")
+        dialog?.setDialogSelectionListener {
+            //files is the array of the paths of files selected by the Application User.
             dpath = it.clone()
             initializePlayer()
+//            window.addFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE)
         }
-//        dialog.setDialogSelectionListener { it ->
-//            Log.d("devhell", "showFilePicker: ${it}")
-//            dpath = it.clone()
-//            //files is the array of the paths of files selected by the Application User.
-//        }
-
-
+        dialog?.setCanceledOnTouchOutside(false)
+        dialog?.setNegativeBtnName("back")
+        dialog?.show()
+        dialog?.findViewById<TextView>(com.github.angads25.filepicker.R.id.dir_path)?.visibility =
+            View.GONE
+        dialog?.findViewById<Button>(com.github.angads25.filepicker.R.id.cancel)?.setOnClickListener {
+            Log.d("devhell", "showFilePicker: ")
+            dialog!!.dismiss()
+            alertBuilder()
+        }
     }
 
     private fun initializePlayer() {
-        Log.d("devhell", "initializePlayer: ")
+        dialog?.dismiss()
         val trackSelector = DefaultTrackSelector(this).apply {
             setParameters(buildUponParameters().setMaxVideoSizeSd())
         }
@@ -122,14 +142,13 @@ class MainActivity : Activity(){
             .setTrackSelector(trackSelector)
             .build()
             .also { exoPlayer ->
-                videoView.player = exoPlayer
+                videoView?.player = exoPlayer
 
                 addMediaItems(exoPlayer)
 
                 exoPlayer.playWhenReady = playWhenReady
-
 //                exoPlayer.seekTo(currentItem, playbackPosition)
-//                exoPlayer.addListener(playbackStateListener)
+                exoPlayer.addListener(playbackStateListener)
                 exoPlayer.repeatMode = ExoPlayer.REPEAT_MODE_ALL
                 exoPlayer.prepare()
             }
@@ -137,7 +156,7 @@ class MainActivity : Activity(){
 
     private fun checkPermission(): Boolean {
         val result =
-            applicationContext.checkSelfPermission(android.Manifest.permission.READ_EXTERNAL_STORAGE)
+            applicationContext.checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE)
         return result == PackageManager.PERMISSION_GRANTED
     }
 
@@ -149,35 +168,21 @@ class MainActivity : Activity(){
             )
         } catch (e: Exception) {
             e.printStackTrace()
-            throw e;
+            throw e
         }
     }
 
     private fun addMediaItems(exoPlayer: ExoPlayer) {
-        Log.d("devhell", "addMediaItems: ${dpath?.size}")
-        //adding videos from Downloads/demo-videos:-
-
-//        val path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).absolutePath + "/demo-videos"
         dpath?.forEach {
             val path = it
-            exoPlayer.addMediaItem(MediaItem.fromUri("$path"))
-//            val directory = File(path)
-//            if (directory.exists()) {
-//                val files = directory.list()
-//                Log.d("devhell", "addMediaItems: $files ")
-//                if (files != null)
-//                    for (i in files) {
-//    //                    if (i.endsWith("mp4"))
-//                        exoPlayer.addMediaItem(MediaItem.fromUri("$path/$i"))
-//                    }
-//            }
+            exoPlayer.addMediaItem(MediaItem.fromUri(path))
         }
 
         //adding videos to exoplayer playlist from assets:-
 //
 //        val videos = assets.list("demo-videos")
 //        videos?.forEach {
-//            Log.d("ajayfile", "string= ${it}")
+//            Log.d("amalFile", "string= ${it}")
 //            if (it.endsWith("mp4"))
 //                exoPlayer.addMediaItem(MediaItem.fromUri("asset:///demo-videos/$it"))
 //        }
@@ -197,10 +202,12 @@ class MainActivity : Activity(){
     @SuppressLint("InlinedApi")
     private fun hideSystemUi() {
         WindowCompat.setDecorFitsSystemWindows(window, false)
-        WindowInsetsControllerCompat(window, videoView).let { controller ->
-            controller.hide(WindowInsetsCompat.Type.systemBars())
-            controller.systemBarsBehavior =
-                WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        videoView?.let {
+            WindowInsetsControllerCompat(window, it).let { controller ->
+                controller.hide(WindowInsetsCompat.Type.systemBars())
+                controller.systemBarsBehavior =
+                    WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            }
         }
     }
 
